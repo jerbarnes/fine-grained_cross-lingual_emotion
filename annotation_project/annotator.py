@@ -140,12 +140,12 @@ class Annotator(Frame):
         try:
             self.current_annotations = self.annotations[self.current_idx]
         except KeyError:
-            self.current_annotations = {"anger": { 0: None, 1: None, 2: None, 3: None},
-                                        "disgust": {0: None, 1: None, 2: None, 3: None},
-                                        "fear": { 0: None, 1: None, 2: None, 3: None},
-                                        "happiness": { 0: None, 1: None, 2: None, 3: None},
-                                        "sadness": {0: None, 1: None, 2: None, 3: None},
-                                        "surprise": {0: None, 1: None, 2: None, 3: None}
+            self.current_annotations = {"anger": { '0': None, '1': None, '2': None, '3': None},
+                                        "disgust": { '0': None, '1': None, '2': None, '3': None},
+                                        "fear": { '0': None, '1': None, '2': None, '3': None},
+                                        "happiness": { '0': None, '1': None, '2': None, '3': None},
+                                        "sadness": { '0': None, '1': None, '2': None, '3': None},
+                                        "surprise": { '0': None, '1': None, '2': None, '3': None}
                                         }
 
     def onNext(self, event=None):
@@ -163,22 +163,22 @@ class Annotator(Frame):
         # If you already have annotations for this instance, set current
         # annotations to these previous annotations
         try:
-            self.current_annotations = self.annotations[self.current_idx]
+            self.current_annotations = self.annotations[str(self.current_idx)]
         except KeyError:
-            self.current_annotations = {"anger": { 0: None, 1: None, 2: None, 3: None},
-                                        "disgust": {0: None, 1: None, 2: None, 3: None},
-                                        "fear": { 0: None, 1: None, 2: None, 3: None},
-                                        "happiness": { 0: None, 1: None, 2: None, 3: None},
-                                        "sadness": {0: None, 1: None, 2: None, 3: None},
-                                        "surprise": {0: None, 1: None, 2: None, 3: None}
+            self.current_annotations = {"anger": { '0': None, '1': None, '2': None, '3': None},
+                                        "disgust": { '0': None, '1': None, '2': None, '3': None},
+                                        "fear": { '0': None, '1': None, '2': None, '3': None},
+                                        "happiness": { '0': None, '1': None, '2': None, '3': None},
+                                        "sadness": { '0': None, '1': None, '2': None, '3': None},
+                                        "surprise": { '0': None, '1': None, '2': None, '3': None}
                                         }
 
         # Color buttons red if their label is already annotated
         for label in self.buttons.keys():
             emo, num = label.split("-")
-            if self.current_annotations[emo][int(num)] == "most":
+            if self.current_annotations[emo][num] == "most":
                 self.pressed(label)
-            elif self.current_annotations[emo][int(num)] == "least":
+            elif self.current_annotations[emo][num] == "least":
                 self.repressed(label)
             else:
                 self.unpressed(label)
@@ -219,14 +219,14 @@ class Annotator(Frame):
         # If you already have annotations for this instance, set current
         # annotations to these previous annotations
         try:
-            self.current_annotations = self.annotations[self.current_idx]
+            self.current_annotations = self.annotations[str(self.current_idx)]
         except KeyError:
-            self.current_annotations = {"anger": { 0: None, 1: None, 2: None, 3: None},
-                                        "disgust": {0: None, 1: None, 2: None, 3: None},
-                                        "fear": { 0: None, 1: None, 2: None, 3: None},
-                                        "happiness": { 0: None, 1: None, 2: None, 3: None},
-                                        "sadness": {0: None, 1: None, 2: None, 3: None},
-                                        "surprise": {0: None, 1: None, 2: None, 3: None}
+            self.current_annotations = {"anger": { '0': None, '1': None, '2': None, '3': None},
+                                        "disgust": { '0': None, '1': None, '2': None, '3': None},
+                                        "fear": { '0': None, '1': None, '2': None, '3': None},
+                                        "happiness": { '0': None, '1': None, '2': None, '3': None},
+                                        "sadness": { '0': None, '1': None, '2': None, '3': None},
+                                        "surprise": { '0': None, '1': None, '2': None, '3': None}
                                         }
         print(self.current_annotations)
 
@@ -234,9 +234,9 @@ class Annotator(Frame):
         # Color buttons red if their label is already annotated
         for label in self.buttons.keys():
             emo, num = label.split("-")
-            if self.current_annotations[emo][int(num)] == "most":
+            if self.current_annotations[emo][num] == "most":
                 self.pressed(label)
-            elif self.current_annotations[emo][int(num)] == "least":
+            elif self.current_annotations[emo][num] == "least":
                 self.repressed(label)
             else:
                 self.unpressed(label)
@@ -274,22 +274,22 @@ class Annotator(Frame):
                 self.annotations = json.load(infile)
                 # set first annotations to current annotations
             try:
-                self.current_annotations = self.annotations[0]
+                self.current_annotations = self.annotations['0'] 
             except KeyError:
-                self.current_annotations = {"anger": { 0: None, 1: None, 2: None, 3: None},
-                                        "disgust": {0: None, 1: None, 2: None, 3: None},
-                                        "fear": { 0: None, 1: None, 2: None, 3: None},
-                                        "happiness": { 0: None, 1: None, 2: None, 3: None},
-                                        "sadness": {0: None, 1: None, 2: None, 3: None},
-                                        "surprise": {0: None, 1: None, 2: None, 3: None}
+                self.current_annotations = {"anger": { '0': None, '1': None, '2': None, '3': None},
+                                        "disgust": { '0': None, '1': None, '2': None, '3': None},
+                                        "fear": { '0': None, '1': None, '2': None, '3': None},
+                                        "happiness": { '0': None, '1': None, '2': None, '3': None},
+                                        "sadness": { '0': None, '1': None, '2': None, '3': None},
+                                        "surprise": { '0': None, '1': None, '2': None, '3': None}
                                         }
 
             # Color buttons red if their label is already annotated
             for label in self.buttons.keys():
                 emo, num = label.split("-")
-                if self.current_annotations[emo][int(num)] == "most":
+                if self.current_annotations[emo][num] == "most":
                     self.pressed(label)
-                elif self.current_annotations[emo][int(num)] == "least":
+                elif self.current_annotations[emo][num] == "least":
                     self.repressed(label)
                 else:
                     self.unpressed(label)
@@ -313,31 +313,31 @@ class Annotator(Frame):
 
     def checkLabel(self, event=None, label=None):
         emo, num = label.split("-")
-        if self.current_annotations[emo][int(num)] == None:
+        if self.current_annotations[emo][num] == None:
             self.setmostLabel(label)
-        elif self.current_annotations[emo][int(num)] == "most":
+        elif self.current_annotations[emo][num] == "most":
             self.setleastLabel(label)
         else:
             self.removeLabel(label)
 
     def setmostLabel(self, label):
-        print("set most to {}".format(label))
+        print("set {} to most".format(label))
         self.pressed(label)
         emo, num = label.split("-")
-        self.current_annotations[emo][int(num)] = "most"
+        self.current_annotations[emo][num] = "most"
 
 
     def setleastLabel(self, label):
-        print("set least to {}".format(label))
+        print("set {} to least".format(label))
         self.repressed(label)
         emo, num = label.split("-")
-        self.current_annotations[emo][int(num)] = "least"
+        self.current_annotations[emo][num] = "least"
 
-    def removemostLabel(self, label):
+    def removeLabel(self, label):
         print("removed {}".format(label))
         self.unpressed(label)
         emo, num = label.split("-")
-        self.current_annotations[emo][int(num)] = None
+        self.current_annotations[emo][num] = None
 
 
     def pressed(self, label):
