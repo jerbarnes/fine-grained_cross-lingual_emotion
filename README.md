@@ -8,11 +8,6 @@ using Best-Worst Scaling
 
 Requirements to run the experiments
 --------
-- Python 3
-- NumPy
-- sklearn [http://scikit-learn.org/stable/]
-- keras [https://keras.io/]
-- nltk [http://www.nltk.org/]
 
 
 
