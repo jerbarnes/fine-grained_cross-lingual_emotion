@@ -1,29 +1,29 @@
-A cross-linguistic comparison  
-
-of fine-grained emotion detection in tweets 
+A cross-linguistic comparison of fine-grained emotion detection in tweets 
 
  
 
-State-of-the-art 
+1. State-of-the-art 
 
-1.1 Emotion detection  
+  1.1 Emotion detection  
 
-Emotions  
+      - Emotions  
 
-Explanation of what it is (granularity) 
+      - Explanation of what it is (granularity) 
 
-Implementations  
+      - Implementations  
 
-1.2 Methods 
+  1.2 Methods 
 
-Automatic (machine learning) 
+      - Automatic (machine learning) 
 
-Manual (annotators) 
+      - Manual (annotators) 
 
-1.3 Resources 
+  1.3 Resources 
 
-Data (tweets) 
+      - Data (tweets) 
 
-Languages  
+      - Languages  
 
-Machine translation (supervised vs. Unsupervised) 
+      - Machine translation (supervised vs. Unsupervised) 
+
+
