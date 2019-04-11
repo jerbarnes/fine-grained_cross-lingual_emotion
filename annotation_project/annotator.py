@@ -14,7 +14,7 @@ import argparse
 
 
 class Annotator(Frame):
-    def __init__(self, parent, emotions):
+    def __init__(self, parent, emotions, annotator_name):
         Frame.__init__(self, parent)
         self.Version = "Sentence Annotator v1"
         self.OS = platform.system().lower()
@@ -26,6 +26,7 @@ class Annotator(Frame):
         self.history = deque(maxlen=20)
         self.currentContent = deque(maxlen=1)
         self.emotions = emotions
+        self.annotator_name = annotator_name
 
         self.texts = None
         self.num_texts = 0
@@ -266,7 +267,7 @@ class Annotator(Frame):
         self.fileName = filename
 
         basename = os.path.basename(filename)
-        ann_file = os.path.join("anns", basename + ".ann")
+        ann_file = os.path.join("anns", basename + "." + self.annotator_name + ".ann")
 
         if os.path.exists(ann_file):
             print("Using previous annotations")
@@ -388,7 +389,7 @@ class Annotator(Frame):
         self.annotations[self.current_idx] = self.current_annotations
 
         basename = os.path.basename(self.fileName)
-        fileName = "anns/" + basename + ".ann"
+        fileName = "anns/" + basename + "." + self.annotator_name + ".ann"
         print("Saving annotations to " + fileName)
 
         with open(fileName, 'w') as out:
@@ -397,6 +398,7 @@ class Annotator(Frame):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--emotions", nargs="+", default=["anger", "disgust", "fear", "happiness", "sadness", "surprise"])
+    parser.add_argument("--annotator_name", default="annotator1")
 
     args = parser.parse_args()
 
@@ -404,7 +406,7 @@ def main():
     print(("OS:%s")%(platform.system()))
     root = Tk()
     root.geometry("1700x700+200+200")
-    app = Annotator(root, args.emotions)
+    app = Annotator(root, args.emotions, args.annotator_name)
     app.setFont(17)
 
 if __name__ == "__main__":
