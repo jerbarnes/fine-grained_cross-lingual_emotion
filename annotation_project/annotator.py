@@ -9,13 +9,12 @@ import json
 import os.path
 import platform
 
-
 from functools import partial
+import argparse
 
-emotions = "anger disgust fear happiness sadness surprise".split()
 
 class Annotator(Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, emotions):
         Frame.__init__(self, parent)
         self.Version = "Sentence Annotator v1"
         self.OS = platform.system().lower()
@@ -26,6 +25,7 @@ class Annotator(Frame):
         self.recommendFlag = True
         self.history = deque(maxlen=20)
         self.currentContent = deque(maxlen=1)
+        self.emotions = emotions
 
         self.texts = None
         self.num_texts = 0
@@ -119,7 +119,7 @@ class Annotator(Frame):
             self.text.delete("1.0",END)
             self.texts = self.readFile(fl)
             self.num_texts = len(self.texts)
-            self.current_text = "\n-----------------------------------\n".join(self.texts[0].split("\t\t"))
+            self.current_text = "\n-----------------------------------\n".join(self.texts[0].split("\t"))
             self.current_idx = 0
 
             self.current_idx_var.set("{0}/{1}".format(self.current_idx+1, self.num_texts))
@@ -157,13 +157,13 @@ class Annotator(Frame):
         self.current_idx += 1
 
         # When you come to the end of the annotations, loop around
-        if self.current_idx == self.num_texts - 1:
+        if self.current_idx == self.num_texts:
             self.current_idx = 0
 
         # If you already have annotations for this instance, set current
         # annotations to these previous annotations
         try:
-            self.current_annotations = self.annotations[str(self.current_idx)]
+            self.current_annotations = self.annotations[self.current_idx]
         except KeyError:
             self.current_annotations = {"anger": { '0': None, '1': None, '2': None, '3': None},
                                         "disgust": { '0': None, '1': None, '2': None, '3': None},
@@ -194,7 +194,7 @@ class Annotator(Frame):
 
         # Get the new label and text and update the widgets parameters
         # to show these
-        self.current_text = "\n-----------------------------------\n".join(self.texts[self.current_idx].split("\t\t"))
+        self.current_text = "\n-----------------------------------\n".join(self.texts[self.current_idx].split("\t"))
         self.text.delete("1.0",END)
         self.text.insert(END, self.current_text)
 
@@ -219,7 +219,7 @@ class Annotator(Frame):
         # If you already have annotations for this instance, set current
         # annotations to these previous annotations
         try:
-            self.current_annotations = self.annotations[str(self.current_idx)]
+            self.current_annotations = self.annotations[self.current_idx]
         except KeyError:
             self.current_annotations = {"anger": { '0': None, '1': None, '2': None, '3': None},
                                         "disgust": { '0': None, '1': None, '2': None, '3': None},
@@ -252,7 +252,7 @@ class Annotator(Frame):
 
         # Get the new label and text and update the widgets parameters
         # to show these
-        self.current_text = "\n-----------------------------------\n".join(self.texts[self.current_idx].split("\t\t"))
+        self.current_text = "\n-----------------------------------\n".join(self.texts[self.current_idx].split("\t"))
         self.text.delete("1.0",END)
         self.text.insert(END, self.current_text)
 
@@ -262,7 +262,7 @@ class Annotator(Frame):
         self.progress.grid(row=2, column=self.textColumn +1, pady=4)
 
     def readFile(self, filename):
-        to_annotate = open(filename, encoding="latin1").readlines()
+        to_annotate = open(filename, encoding="utf8").readlines()
         self.fileName = filename
 
         basename = os.path.basename(filename)
@@ -271,10 +271,20 @@ class Annotator(Frame):
         if os.path.exists(ann_file):
             print("Using previous annotations")
             with open(ann_file, "r") as infile:
-                self.annotations = json.load(infile)
-                # set first annotations to current annotations
+                annotations = json.load(infile)
+
+            #loading a json loads everything as a string, which doesn't work with the next and
+            #back button setup, so we have to convert the outermost keys to integers
+
+            anns = {}
+            for key, value in annotations.items():
+                anns[int(key)] = value
+            self.annotations = anns
+
+
+            #If it exists, set current annotations to first annotations, otherwise initialize
             try:
-                self.current_annotations = self.annotations['0'] 
+                self.current_annotations = self.annotations[0]
             except KeyError:
                 self.current_annotations = {"anger": { '0': None, '1': None, '2': None, '3': None},
                                         "disgust": { '0': None, '1': None, '2': None, '3': None},
@@ -298,7 +308,7 @@ class Annotator(Frame):
             print("No annotations found")
 
         return to_annotate
-    
+
     def setFont(self, value):
         _family=self.textFontStyle
         _size = value
@@ -359,7 +369,7 @@ class Annotator(Frame):
 
         self.buttons = {}
 
-        for i, emo in enumerate(emotions):
+        for i, emo in enumerate(self.emotions):
             for ann in range(4):
                 nextButton = Button(self, text=emo, command=partial(self.checkLabel, label=emo + "-" + str(ann)))
                 nextButton.grid(row= 4+ann, column=self.textColumn+2+i)
@@ -374,6 +384,8 @@ class Annotator(Frame):
         if (".ann" not in self.fileName) and (".txt" not in self.fileName):
             out_error = "Export only works on filename ended in .ann or .txt!\nPlease rename file."
 
+        # make sure current annotations are included
+        self.annotations[self.current_idx] = self.current_annotations
 
         basename = os.path.basename(self.fileName)
         fileName = "anns/" + basename + ".ann"
@@ -382,15 +394,21 @@ class Annotator(Frame):
         with open(fileName, 'w') as out:
             json.dump(self.annotations, out)
 
-                    
-if __name__ == "__main__":
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--emotions", nargs="+", default=["anger", "disgust", "fear", "happiness", "sadness", "surprise"])
+
+    args = parser.parse_args()
+
     print("SUTDAnnotator launched!")
     print(("OS:%s")%(platform.system()))
     root = Tk()
     root.geometry("1700x700+200+200")
-    app = Annotator(root)
+    app = Annotator(root, args.emotions)
     app.setFont(17)
 
-    emotions = "anger disgust fear happiness sadness surprise".split()
-    
+if __name__ == "__main__":
+
+    main()
+
 
