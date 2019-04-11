@@ -12,7 +12,7 @@ python 3
 
 Usage
 --------
-python3 annotator.py
+python3 annotator.py  optional: [--emotions love hate] [--annotator_name Jeremy]
 
 
 License
