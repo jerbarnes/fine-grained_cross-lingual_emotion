@@ -335,6 +335,8 @@ class BLSE(nn.Module):
                                                self.trg_lang,
                                                self.emotion,
                                                '{0}epochs-{1}batchsize-{2}alpha-{3:.3f}cross_corr'.format(num_epochs, batch_size, alpha, best_cross_corr))
+                    #If there's no savedir, create it
+                    os.makedirs(os.path.dirname(weight_file), exist_ok=True)
                     self.dump_weights(weight_file)
 
                 sys.stdout.write('\r epoch {0} loss: {1:.3f}  trans: {2:.3f}  src_mse: {3:.3f}  trg_mse: {4:.3f}  src_syn: {5:.3f}  src_ant: {6:.3f}  cross_syn: {7:.3f}  cross_ant: {8:.3f}'.format(
@@ -357,6 +359,8 @@ class BLSE(nn.Module):
                                                self.trg_lang,
                                                self.emotion,
                                                '{0}epochs-{1}batchsize-{2}alpha-{3:.3f}source_corr'.format(num_epochs, batch_size, alpha, best_source_corr))
+                    #If there's no savedir, create it
+                    os.makedirs(os.path.dirname(weight_file), exist_ok=True)
                     self.dump_weights(weight_file)
 
                 sys.stdout.write('\r epoch {0} loss: {1:.3f}  trans: {2:.3f}  src_corr: {3:.3f}'.format(
@@ -473,7 +477,7 @@ if __name__ == '__main__':
                         default="anger")
     parser.add_argument('-svd', '--savedir',
                         help="where to dump weights during training (default: ./models)",
-                        default='models/blse')
+                        default='saved_models/blse')
     args = parser.parse_args()
 
 
@@ -508,15 +512,14 @@ if __name__ == '__main__':
                 trg_vecs,
                 pdataset,
                 src_dataset,
+                args.emotion,
+                args.target_lang,
                 trg_dataset=trg_dataset,
                 projection_loss=args.proj_loss,
                 output_dim=1,
                 src_syn1=synonyms1, src_syn2=synonyms2, src_neg=neg,
                 trg_syn1=cross_syn1, trg_syn2=cross_syn2, trg_neg=cross_neg,
                 )
-
-    # If there's no savedir, create it
-    os.makedirs(args.savedir, exist_ok=True)
 
     # Fit model
     print("training model")
