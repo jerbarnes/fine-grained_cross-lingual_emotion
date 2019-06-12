@@ -19,7 +19,7 @@ from Utils.utils import *
 from sklearn.metrics import f1_score, accuracy_score, precision_score, \
                             recall_score, confusion_matrix
 from scipy.spatial.distance import cosine
-
+from scipy.stats import pearsonr
 
 class BLSE(nn.Module):
     """
@@ -54,8 +54,14 @@ class BLSE(nn.Module):
 
     """
 
-    def __init__(self, src_vecs, trg_vecs, pdataset,
-                 cdataset, trg_dataset,
+    def __init__(self,
+                 src_vecs,
+                 trg_vecs,
+                 pdataset,
+                 cdataset,
+                 emotion,
+                 trg_lang,
+                 trg_dataset=None,
                  projection_loss='mse',
                  output_dim=4,
                  src_syn1=None, src_syn2=None, src_neg=None,
@@ -64,6 +70,8 @@ class BLSE(nn.Module):
         super(BLSE, self).__init__()
 
         # Embedding matrices
+        self.emotion = emotion
+        self.trg_lang = trg_lang
         self.semb = nn.Embedding(src_vecs.vocab_length, src_vecs.vector_size)
         self.semb.weight.data.copy_(torch.from_numpy(src_vecs._matrix))
         self.sw2idx = src_vecs._w2idx
@@ -85,7 +93,7 @@ class BLSE(nn.Module):
         self.clf = nn.Linear(src_vecs.vector_size, output_dim)
 
         # Loss Functions
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = nn.MSELoss()
         if projection_loss == 'mse':
             self.proj_criterion = mse_loss
         elif projection_loss == 'cosine':
@@ -106,16 +114,13 @@ class BLSE(nn.Module):
         self.trg_neg = trg_neg
 
         # Trg Data
-        if (self.trg_dataset != None and
-            self.trg_syn1 != None and
-            self.trg_syn2 != None and
-            self.trg_neg !=None):
+        if self.trg_dataset != None:
             self.trg_data = True
         else:
             self.trg_data = False
 
         # History
-        self.history  = {'loss':[], 'dev_cosine':[], 'dev_f1':[], 'cross_f1':[],
+        self.history  = {'loss':[], 'dev_cosine':[], 'dev_corr':[], 'cross_corr':[],
                          'syn_cos':[], 'ant_cos':[], 'cross_syn':[], 'cross_ant':[]}
 
         # Do not update original embedding spaces
@@ -231,12 +236,12 @@ class BLSE(nn.Module):
             x_proj = self.m(X)
         else:
             x_proj = self.mp(X)
-        out = F.softmax(self.clf(x_proj))
+        out = self.clf(x_proj)
         return out
 
     def classification_loss(self, x, y, src=True):
         pred = self.predict(x, src=src)
-        y = Variable(torch.from_numpy(y))
+        y = Variable(torch.from_numpy(np.array(y, dtype=np.float32)))
         loss = self.criterion(pred, y)
         return loss
 
@@ -253,7 +258,7 @@ class BLSE(nn.Module):
 
     def fit(self, proj_X, proj_Y,
             class_X, class_Y,
-            weight_dir='models',
+            weight_dir='saved_models',
             batch_size=40,
             epochs=100,
             alpha=0.5):
@@ -264,7 +269,8 @@ class BLSE(nn.Module):
         """
 
         num_batches = int(len(class_X) / batch_size)
-        best_cross_f1 = 0
+        best_source_corr = 0
+        best_cross_corr = 0
         num_epochs = 0
 
         for i in range(epochs):
@@ -290,9 +296,9 @@ class BLSE(nn.Module):
                 # check source dev f1
                 xdev = self.cdataset._Xdev
                 ydev = self.cdataset._ydev
-                xp = self.predict(xdev).data.numpy().argmax(1)
-                # macro f1
-                dev_f1 = macro_f1(ydev, xp)
+                pred = self.predict(xdev, src=True).squeeze().data.numpy()
+                corr, pvalue = pearsonr(ydev, pred)
+                dev_corr = corr
 
                 # check cosine distance between source sentiment synonyms
                 p1 = self.project_one(self.src_syn1)
@@ -304,20 +310,6 @@ class BLSE(nn.Module):
                 n1 = self.project_one(self.src_neg)
                 ant_cos = cos(p3, n1)
 
-            if self.trg_data:
-                # check target dev f1
-                crossx = self.trg_dataset._Xdev
-                crossy = self.trg_dataset._ydev
-                xp = self.predict(crossx, src=False).data.numpy().argmax(1)
-                # macro f1
-                cross_f1 = macro_f1(crossy, xp)
-
-
-                if cross_f1 > best_cross_f1:
-                    best_cross_f1 = cross_f1
-                    weight_file = os.path.join(weight_dir, '{0}epochs-{1}batchsize-{2}alpha-{3:.3f}crossf1'.format(num_epochs, batch_size, alpha, best_cross_f1))
-                    self.dump_weights(weight_file)
-
                 # check cosine distance between target sentiment synonyms
                 cp1 = self.project_one(self.trg_syn1, src=False)
                 cp2 = self.project_one(self.trg_syn2, src=False)
@@ -328,15 +320,51 @@ class BLSE(nn.Module):
                 cn1 = self.project_one(self.trg_neg, src=False)
                 cross_ant_cos = cos(cp3, cn1)
 
-                sys.stdout.write('\r epoch {0} loss: {1:.3f}  trans: {2:.3f}  src_f1: {3:.3f}  trg_f1: {4:.3f}  src_syn: {5:.3f}  src_ant: {6:.3f}  cross_syn: {7:.3f}  cross_ant: {8:.3f}'.format(
-                    i, loss.data.item(), score.data.item(), dev_f1,
-                    cross_f1, syn_cos.data.item(), ant_cos.data.item(),
+            if self.trg_data:
+                # check target dev f1
+                crossx = self.trg_dataset._Xtest
+                crossy = self.trg_dataset._ytest
+                pred = self.predict(crossx, src=False).squeeze().data.numpy()
+                corr, pvalue = pearsonr(crossy, pred)
+                cross_corr = corr
+
+
+                if cross_corr > best_cross_corr:
+                    best_cross_corr = cross_corr
+                    weight_file = os.path.join(weight_dir,
+                                               self.trg_lang,
+                                               self.emotion,
+                                               '{0}epochs-{1}batchsize-{2}alpha-{3:.3f}cross_corr'.format(num_epochs, batch_size, alpha, best_cross_corr))
+                    self.dump_weights(weight_file)
+
+                sys.stdout.write('\r epoch {0} loss: {1:.3f}  trans: {2:.3f}  src_mse: {3:.3f}  trg_mse: {4:.3f}  src_syn: {5:.3f}  src_ant: {6:.3f}  cross_syn: {7:.3f}  cross_ant: {8:.3f}'.format(
+                    i, loss.data.item(), score.data.item(), dev_corr,
+                    cross_corr, syn_cos.data.item(), ant_cos.data.item(),
                     cross_syn_cos.data.item(), cross_ant_cos.data.item()))
                 sys.stdout.flush()
                 self.history['loss'].append(loss.data.item())
                 self.history['dev_cosine'].append(score.data.item())
-                self.history['dev_f1'].append(dev_f1)
-                self.history['cross_f1'].append(cross_f1)
+                self.history['dev_corr'].append(dev_corr)
+                self.history['cross_corr'].append(cross_corr)
+                self.history['syn_cos'].append(syn_cos.data.item())
+                self.history['ant_cos'].append(ant_cos.data.item())
+                self.history['cross_syn'].append(cross_syn_cos.data.item())
+                self.history['cross_ant'].append(cross_ant_cos.data.item())
+            else:
+                if dev_corr > best_source_corr:
+                    best_source_corr = dev_corr
+                    weight_file = os.path.join(weight_dir,
+                                               self.trg_lang,
+                                               self.emotion,
+                                               '{0}epochs-{1}batchsize-{2}alpha-{3:.3f}source_corr'.format(num_epochs, batch_size, alpha, best_source_corr))
+                    self.dump_weights(weight_file)
+
+                sys.stdout.write('\r epoch {0} loss: {1:.3f}  trans: {2:.3f}  src_corr: {3:.3f}'.format(
+                    i, loss.data.item(), score.data.item(), dev_corr))
+                sys.stdout.flush()
+                self.history['loss'].append(loss.data.item())
+                self.history['dev_cosine'].append(score.data.item())
+                self.history['dev_corr'].append(dev_corr)
                 self.history['syn_cos'].append(syn_cos.data.item())
                 self.history['ant_cos'].append(ant_cos.data.item())
                 self.history['cross_syn'].append(cross_syn_cos.data.item())
@@ -352,13 +380,13 @@ class BLSE(nn.Module):
         fig = plt.figure()
         ax = fig.add_subplot(111)
         ax.plot(h['dev_cosine'], label='translation_cosine')
-        ax.plot(h['dev_f1'], label='source_f1', linestyle=':')
-        ax.plot(h['cross_f1'], label='target_f1', linestyle=':')
+        ax.plot(h['dev_corr'], label='source_corr', linestyle=':')
+        ax.plot(h['cross_corr'], label='target_corr', linestyle=':')
         ax.plot(h['syn_cos'], label='source_synonyms', linestyle='--')
         ax.plot(h['ant_cos'], label='source_antonyms', linestyle='-.')
         ax.plot(h['cross_syn'], label='target_synonyms', linestyle='--')
         ax.plot(h['cross_ant'], label='target_antonyms', linestyle='-.')
-        ax.set_ylim(-.5, 1.4)
+        ax.set_ylim(0, 1)
         ax.legend(
                 loc='upper center', bbox_to_anchor=(.5, 1.05),
                 ncol=3, fancybox=True, shadow=True)
@@ -369,14 +397,6 @@ class BLSE(nn.Module):
         else:
             plt.show()
 
-    def confusion_matrix(self, X, Y, src=True):
-        """
-        Prints a confusion matrix for the model
-        """
-        pred = self.predict(X, src=src).data.numpy().argmax(1)
-        cm = confusion_matrix(Y, pred, sorted(set(Y)))
-        print(cm)
-
     def evaluate(self, X, Y, src=True, outfile=None):
         """
         Prints the accuracy, macro precision, macro recall,
@@ -384,18 +404,10 @@ class BLSE(nn.Module):
         the predictions are written to outfile.
         """
 
-        pred = self.predict(X, src=src).data.numpy().argmax(1)
-        acc = accuracy_score(Y, pred)
-        prec = per_class_prec(Y, pred).mean()
-        rec = per_class_prec(Y, pred).mean()
-        f1 = macro_f1(Y, pred)
-        if outfile:
-            with open(outfile, 'w') as out:
-                for i in pred:
-                    out.write('{0}\n'.format(i))
-        else:
-            print('Test Set:')
-            print('acc:  {0:.3f}\nmacro prec: {1:.3f}\nmacro rec: {2:.3f}\nmacro f1: {3:.3f}'.format(acc, prec, rec, f1))
+        pred = self.predict(X, src=src).squeeze().data.numpy()
+        corr, pvalue = pearsonr(Y, pred)
+        print('Test Set:')
+        print('Pearson Correlation: {0:.3f} ({1:.5f})'.format(corr, pvalue))
 
 
 def mse_loss(x,y):
@@ -414,6 +426,11 @@ def cos(x, y):
     return c(x, y).mean()
 
 def main():
+    pass
+
+if __name__ == '__main__':
+    #main()
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-sl', '--source_lang',
                         help="source language: es, ca, eu, en (default: en)",
@@ -421,13 +438,9 @@ def main():
     parser.add_argument('-tl', '--target_lang',
                         help="target language: es, ca, eu, en (default: es)",
                         default='es')
-    parser.add_argument('-bi', '--binary',
-                        help="binary or 4-class (default: True)",
-                        default=True,
-                        type=str2bool)
     parser.add_argument('-e', '--epochs',
                         help="training epochs (default: 200)",
-                        default=200,
+                        default=100,
                         type=int)
     parser.add_argument('-a', '--alpha',
                         help="trade-off between projection and classification objectives (default: .001)",
@@ -442,17 +455,23 @@ def main():
                         type=int)
     parser.add_argument('-sv', '--src_vecs',
                         help=" source language vectors (default: GoogleNewsVecs )",
-                        default='../embeddings/blse/google.txt')
+                        default='../../embeddings/blse/google.txt')
     parser.add_argument('-tv', '--trg_vecs',
                         help=" target language vectors (default: SGNS on Wikipedia)",
-                        default='../embeddings/blse/sg-300-es.txt')
+                        default='../../embeddings/blse/sg-300-es.txt')
     parser.add_argument('-tr', '--trans',
                         help='translation pairs (default: Bing Liu Sentiment Lexicon Translations)',
-                        default='lexicons/bingliu/en-es.txt')
-    parser.add_argument('-da', '--dataset',
-                        help="dataset to train and test on (default: opener_sents)",
-                        default='opener_sents',)
-    parser.add_argument('-sd', '--savedir',
+                        default='../lexicons/bingliu/en-es.txt')
+    parser.add_argument('-sd', '--src_dataset',
+                        help="location of source dataset",
+                        default="../dataset/en")
+    parser.add_argument('-td', '--trg_dataset',
+                        help="location of target dataset",
+                        default="../dataset/es/original")
+    parser.add_argument('-emo', '--emotion',
+                        help="emotion class (anger, fear, joy, sadness)",
+                        default="anger")
+    parser.add_argument('-svd', '--savedir',
                         help="where to dump weights during training (default: ./models)",
                         default='models/blse')
     args = parser.parse_args()
@@ -460,18 +479,17 @@ def main():
 
     # import datasets (representation will depend on final classifier)
     print('importing datasets')
+    src_dataset = Emotion_Dataset(args.src_dataset,
+                                  None,
+                                  rep=words,
+                                  emotion=args.emotion)
+    print('src_dataset done')
+    trg_dataset = Emotion_Testset(args.trg_dataset,
+                                  None,
+                                  rep=words,
+                                  emotion=args.emotion)
+    print('trg_dataset done')
 
-    dataset = General_Dataset(os.path.join('datasets', args.source_lang, args.dataset),
-                              None,
-                              binary=args.binary,
-                              rep=words,
-                              one_hot=False)
-
-    cross_dataset = General_Dataset(os.path.join('datasets', args.target_lang, args.dataset),
-                                    None,
-                                    binary=args.binary,
-                                    rep=words,
-                                    one_hot=False)
 
     # Import monolingual vectors
     print('importing word embeddings')
@@ -485,17 +503,14 @@ def main():
     # Import translation pairs
     pdataset = ProjectionDataset(args.trans, src_vecs, trg_vecs)
 
-    if args.binary:
-        output_dim = 2
-        b = 'bi'
-    else:
-        output_dim = 4
-        b = '4cls'
-
     # Set up model
-    blse = BLSE(src_vecs, trg_vecs, pdataset, dataset, cross_dataset,
+    blse = BLSE(src_vecs,
+                trg_vecs,
+                pdataset,
+                src_dataset,
+                trg_dataset=trg_dataset,
                 projection_loss=args.proj_loss,
-                output_dim=output_dim,
+                output_dim=1,
                 src_syn1=synonyms1, src_syn2=synonyms2, src_neg=neg,
                 trg_syn1=cross_syn1, trg_syn2=cross_syn2, trg_neg=cross_neg,
                 )
@@ -504,32 +519,15 @@ def main():
     os.makedirs(args.savedir, exist_ok=True)
 
     # Fit model
+    print("training model")
     blse.fit(pdataset._Xtrain, pdataset._ytrain,
-             dataset._Xtrain, dataset._ytrain,
+             src_dataset._Xtrain, src_dataset._ytrain,
              weight_dir=args.savedir,
              batch_size=args.batch_size, alpha=args.alpha, epochs=args.epochs)
 
-    # Get best dev f1 and weights
-    #best_f1, best_params, best_weights = get_best_run(args.savedir)
-    #blse.load_weights(best_weights)
-    print()
-    print('Dev set')
-    #print('best dev f1: {0:.3f}'.format(best_f1))
-    #print('parameters: epochs {0} batch size {1} alpha {2}'.format(*best_params))
-
     # Evaluate on test set
-    blse.evaluate(cross_dataset._Xtest, cross_dataset._ytest, src=False)
-
-    #blse.evaluate(cross_dataset._Xtest, cross_dataset._ytest, src=False,
-    #              outfile=os.path.join('predictions', args.target_lang, 'blse',
-    #                                   '{0}-{1}-alpha{2}-epoch{3}-batch{4}.txt'.format(
-    #                                   args.dataset, b, args.alpha,
-    #                                   best_params[0], args.batch_size)))
-
-    #blse.confusion_matrix(cross_dataset._Xtest, cross_dataset._ytest, src=False)
+    blse.evaluate(trg_dataset._Xtest, trg_dataset._ytest, src=False)
 
     blse.plot()
 
 
-if __name__ == '__main__':
-    main()
