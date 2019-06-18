@@ -514,7 +514,7 @@ if __name__ == '__main__':
                 src_dataset,
                 args.emotion,
                 args.target_lang,
-                trg_dataset=trg_dataset,
+                trg_dataset=None,
                 projection_loss=args.proj_loss,
                 output_dim=1,
                 src_syn1=synonyms1, src_syn2=synonyms2, src_neg=neg,
@@ -528,8 +528,22 @@ if __name__ == '__main__':
              weight_dir=args.savedir,
              batch_size=args.batch_size, alpha=args.alpha, epochs=args.epochs)
 
+    # Get best performing model
+    weight_dir = os.path.join(args.savedir,
+                              args.target_lang,
+                              args.emotion)
+    best_corr, best_params, best_weights = get_best_run(weight_dir)
+    blse.load_weights(best_weights)
+
     # Evaluate on test set
+    print()
+    print("Pearson Correlation on Source Dev:")
+    blse.evaluate(src_dataset._Xdev, src_dataset._ydev, src=True)
+    print()
+
+    print("Pearson Correlation on Target Test:")
     blse.evaluate(trg_dataset._Xtest, trg_dataset._ytest, src=False)
+    print()
 
     blse.plot()
 

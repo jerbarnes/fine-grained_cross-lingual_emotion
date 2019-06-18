@@ -28,7 +28,7 @@ def bow(x, vocab):
 
 class Vocab(defaultdict):
     def __init__(self, train=True):
-        super().__init__(lambda : len(self))
+        super(Vocab, self).__init__(lambda : len(self))
         self.train = train
         self.UNK = "UNK"
         # set UNK token to 0 index
@@ -74,22 +74,22 @@ if __name__ == '__main__':
     src_dataset._Xtrain = [vocab.ws2ids(s) for s in src_dataset._Xtrain]
     src_dataset._Xdev = [vocab.ws2ids(s) for s in src_dataset._Xdev]
     trg_dataset._Xtest = [vocab.ws2ids(s) for s in trg_dataset._Xtest]
-    
+
     src_dataset._Xtrain = [bow(s, vocab) for s in src_dataset._Xtrain]
     src_dataset._Xdev = [bow(s, vocab) for s in src_dataset._Xdev]
     trg_dataset._Xtest = [bow(s, vocab) for s in trg_dataset._Xtest]
-    
+
     # train Support Vector Regression on source
     print('Training SVR...')
     clf = SVR(C=100, kernel="linear")
     history = clf.fit(src_dataset._Xtrain, src_dataset._ytrain)
-   
+
     # test on src devset and trg devset
     src_pred = clf.predict(src_dataset._Xdev)
     score, p = pearsonr(src_dataset._ydev, src_pred)
     print("SRC-SRC: {0:.3f} ({1:.3f})".format(score, p))
-    
+
     trg_pred = clf.predict(trg_dataset._Xtest)
     score, p = pearsonr(trg_dataset._ytest, trg_pred)
     print("SRC-TRG: {0:.3f} ({1:.3f})".format(score, p))
-    
+

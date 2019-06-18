@@ -111,13 +111,11 @@ def str2bool(v):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-l', '--lang', default='ca', help='choose target language: es, ca, eu (defaults to ca)')
-    parser.add_argument('-b', '--binary', default=False, help='whether to use binary or 4-class (defaults to False == 4-class)', type=str2bool)
-
+    parser.add_argument('-l', '--lang', default='es', help='choose target language: es, ca, eu (defaults to es)')
     parser.add_argument('-se', '--src_embedding', default="../../embeddings/blse/google.txt")
-    parser.add_argument('-te', '--trg_embedding', default="../../embeddings/blse/sg-300-ca.txt")
+    parser.add_argument('-te', '--trg_embedding', default="../../embeddings/blse/sg-300-es.txt")
     parser.add_argument('-sd', '--src_dataset', default="../dataset/en")
-    parser.add_argument('-td', '--trg_dataset', default="../dataset/ca/original")
+    parser.add_argument('-td', '--trg_dataset', default="../dataset/es/original")
     parser.add_argument('-emo', '--emotion', default="anger")
 
     args = parser.parse_args()
@@ -132,7 +130,7 @@ if __name__ == '__main__':
     trg_vecs.normalize()
 
     # Setup projection dataset
-    trans = '../lexicons/bingliu_en_{0}.one-2-one.txt'.format(args.lang)
+    trans = '../lexicons/bingliu/en-{0}.txt'.format(args.lang)
     pdataset = ProjectionDataset(trans, src_vecs, trg_vecs)
 
     # learn the translation matrix W
@@ -200,7 +198,7 @@ if __name__ == '__main__':
     paramdir = os.path.join("saved_models",
                              args.lang,
                              args.emotion)
-        
+
     os.makedirs(paramdir, exist_ok=True)
 
     with open(os.path.join(paramdir, "w2idx.pkl"), 'wb') as out:
@@ -217,7 +215,7 @@ if __name__ == '__main__':
                                   args.emotion,
                                   "vecmap",
                                   "svr")
-        
+
     os.makedirs(checkpoint, exist_ok=True)
     clf = SVR(C=100, kernel="linear")
     history = clf.fit(src_dataset._Xtrain, src_dataset._ytrain)
@@ -228,8 +226,8 @@ if __name__ == '__main__':
     src_pred = clf.predict(src_dataset._Xdev)
     score, p = pearsonr(src_dataset._ydev, src_pred)
     print("SRC-SRC: {0:.3f} ({1:.3f})".format(score, p))
-    
+
     trg_pred = clf.predict(trg_dataset._Xtest)
     score, p = pearsonr(trg_dataset._ytest, trg_pred)
     print("SRC-TRG: {0:.3f} ({1:.3f})".format(score, p))
-    
+
