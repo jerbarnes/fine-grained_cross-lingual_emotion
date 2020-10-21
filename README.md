@@ -36,7 +36,7 @@ If you use this code, please cite the following paper:
 -------
 ```
 @inproceedings{NavasAlejo2020,
-  author =  "Navas-Alejo, Irean
+  author =  "Navas Alejo, Irean
         and  Badia, Toni
         and  Barnes, Jeremy",
   title =   "Cross-lingual Emotion Intensity Prediction",
