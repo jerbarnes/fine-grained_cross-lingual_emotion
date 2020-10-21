@@ -8,10 +8,10 @@ using Best-Worst Scaling.
 
 Requirements to run the experiments
 --------
-python3
-sklearn
-scipy
-transformers
+- python3
+- sklearn
+- scipy
+- transformers
 
 
 Usage
