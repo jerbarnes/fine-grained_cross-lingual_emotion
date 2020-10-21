@@ -17,6 +17,8 @@ Requirements to run the experiments
 Usage
 --------
 
+First, download the pretrained [embeddings](https://drive.google.com/file/d/1GpyF2h0j8K5TKT7y7Aj0OyPgpFc8pMNS/view), unzip them and place them in a folder called 'embeddings' in the fine-grained_cross-lingual_emotion directory.
+
 Reports Pearson correlation and p-values for models trained on source language data and tested on source (SRC-SRC) and then tested on target language data (SRC-TRG)
 
 ```
